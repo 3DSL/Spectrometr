@@ -1,0 +1,2136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Спектрометр</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      color: #000000;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    body.dark-theme {
+      background-color: #121212;
+      color: #ffffff;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      width: 100%;
+      height: 100vh;
+      margin: 0 auto;
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .camera-container {
+      position: relative;
+      width: calc(100% - 220px);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: center;
+      display: none;
+    }
+
+    #camera-feed {
+      width: 100%;
+      height: auto;
+      border: 2px solid #ccc;
+      object-fit: contain;
+    }
+
+    #selection-canvas, #overlay-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: none;
+    }
+
+    #overlay-canvas.active {
+      pointer-events: auto;
+    }
+
+    #selection-canvas.active {
+      pointer-events: auto;
+      z-index: 2;
+    }
+
+    .resize-corner {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: yellow;
+      border: 1px solid black;
+      cursor: nwse-resize;
+      pointer-events: auto;
+      z-index: 3;
+    }
+
+    #camera-toggle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: transparent;
+      color: red;
+      font-size: 30px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+    }
+
+    #camera-toggle.green {
+      color: green;
+    }
+
+    .chart-container {
+      width: 100%;
+      display: flex;
+      position: relative;
+      justify-content: space-between;
+      height: calc(100% - 70px);
+      margin-top: 40px;
+      box-sizing: border-box;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 200px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 20px;
+      right: 0;
+      align-self: flex-start;
+      padding-left: 10px;
+    }
+
+    .toggle-container {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .controls button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .controls button.active {
+      background-color: #28a745;
+    }
+
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+    }
+
+    .controls input[type="range"] {
+      width: 100%;
+    }
+
+    #theme-toggle {
+      font-size: 24px;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    #realtime-toggle {
+      font-size: 24px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: red;
+    }
+
+    #realtime-toggle.active {
+      color: green;
+    }
+
+    #select-area-toggle {
+      padding: 5px 10px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .calibration {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .calibration h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+    }
+
+    .calibration label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 5px;
+    }
+
+    .calibration input[type="number"] {
+      width: 80px;
+      padding: 5px;
+    }
+
+    .calibration button {
+      background-color: #ff9800;
+      margin-top: 10px;
+    }
+
+    .calibration p {
+      margin: 10px 0 0 0;
+      font-size: 14px;
+      color: #666;
+    }
+
+    #chart-style, #export-format {
+      padding: 5px;
+      font-size: 16px;
+      margin-top: 5px;
+      border-radius: 5px;
+      background-color: #ffffff;
+      color: #000000;
+      width: 100%;
+    }
+
+    body.dark-theme #chart-style, body.dark-theme #export-format {
+      background-color: #333333;
+      color: #ffffff;
+    }
+
+    #peak-threshold-container, #valley-threshold-container {
+      margin-left: 20px;
+    }
+
+    #peak-threshold, #valley-threshold {
+      width: 100px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      width: calc(100% - 220px);
+      height: calc(100% - 60px);
+			margin-top: 60px;
+    }
+
+    .saved-spectrums {
+      position: absolute;
+      top: -50px;
+      left: 0;
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      z-index: 20;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .spectrum-tab {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      background-color: #f0f0f0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      position: relative;
+    }
+
+    body.dark-theme .spectrum-tab {
+      background-color: #333;
+      border-color: #555;
+    }
+
+    .spectrum-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .spectrum-label {
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    body.dark-theme .spectrum-label {
+      color: #ffffff;
+    }
+
+    .spectrum-close {
+      display: none;
+      width: 16px;
+      height: 16px;
+      background-color: red;
+      border-radius: 50%;
+      color: white;
+      text-align: center;
+      line-height: 16px;
+      font-size: 12px;
+      cursor: pointer;
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .spectrum-tab:hover .spectrum-close {
+      display: block;
+    }
+
+    #spectrum-chart {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .resize-handle {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 20px;
+      height: 20px;
+      background-color: transparent;
+      cursor: nwse-resize;
+      z-index: 20;
+      display: none;
+    }
+
+    .resize-handle::before {
+      content: "↙";
+      position: absolute;
+      bottom: 2px;
+      left: 2px;
+      font-size: 16px;
+      color: #007bff;
+    }
+
+    .chart-wrapper:hover .resize-handle {
+      display: block;
+    }
+
+    #export-spectrum {
+      background-color: #ff5722;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+
+    .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      width: 300px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    body.dark-theme .modal-content {
+      background-color: #333;
+      color: #ffffff;
+    }
+
+    .modal-content h3 {
+      margin: 0 0 10px 0;
+    }
+
+    .modal-content label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .modal-content button {
+      margin-top: 10px;
+      padding: 10px;
+      width: 100%;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .modal-content button:hover {
+      background-color: #0056b3;
+    }
+
+    .color-palette {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 5px;
+      z-index: 100;
+      display: grid;
+      grid-template-columns: repeat(4, 20px);
+      gap: 5px;
+    }
+
+    body.dark-theme .color-palette {
+      background-color: #333;
+      border-color: #555;
+    }
+
+    .color-option {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .current-spectrum-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 10px;
+      background-color: #f0f0f0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      position: absolute;
+      top: -40px;
+      right: 0px;
+      z-index: 21;
+    }
+
+    body.dark-theme .current-spectrum-header {
+      background-color: #333;
+      border-color: #555;
+    }
+
+    .current-spectrum-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .current-spectrum-label {
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    body.dark-theme .current-spectrum-label {
+      color: #ffffff;
+    }
+
+    .smoothing-control {
+      margin-top: 10px;
+    }
+
+    .smoothing-value {
+      display: inline-block;
+      width: 20px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .chart-container {
+        flex-direction: column;
+        height: auto;
+        margin-top: 20px;
+      }
+      .chart-wrapper {
+        margin-top: 40px;
+        height: 250px;
+      }
+      .controls {
+        width: 100%;
+        position: static;
+        padding-left: 0;
+        margin-top: 20px;
+      }
+      .camera-container {
+        width: 100%;
+        height: auto;
+      }
+      .chart-container {
+        height: auto;
+      }
+      .current-spectrum-header {
+        top: -30px;
+        right: 5px;
+      }
+    }
+
+    .language-switcher {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      z-index: 200;
+      background: #f0f0f0;
+      color: #222;
+      border-radius: 8px;
+      padding: 5px 15px;
+      cursor: pointer;
+      font-weight: bold;
+      user-select: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark-theme .language-switcher {
+      background: #fff;
+      color: #111;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="language-switcher" id="language-switcher" style="position: absolute; top: 10px; right: 20px; z-index: 200; background: #f0f0f0; border-radius: 8px; padding: 5px 15px; cursor: pointer; font-weight: bold; user-select: none;">RU/EN</div>
+  <div class="container">
+    <div class="camera-container">
+      <video id="camera-feed" autoplay></video>
+      <canvas id="selection-canvas"></canvas>
+      <canvas id="overlay-canvas"></canvas>
+      <div id="top-left" class="resize-corner"></div>
+      <div id="top-right" class="resize-corner"></div>
+      <div id="bottom-left" class="resize-corner"></div>
+      <div id="bottom-right" class="resize-corner"></div>
+    </div>
+
+    <div class="chart-container">
+      <div class="chart-wrapper">
+        <div class="saved-spectrums" id="saved-spectrums"></div>
+        <div class="current-spectrum-header" id="current-spectrum-header">
+          <div class="current-spectrum-dot" id="current-spectrum-dot"></div>
+          <span class="current-spectrum-label" id="current-spectrum-label" contenteditable="true">Текущий спектр</span>
+          <div class="color-palette" id="current-spectrum-palette"></div>
+        </div>
+        <canvas id="spectrum-chart"></canvas>
+        <div class="resize-handle" id="resize-handle"></div>
+      </div>
+      <div class="controls">
+        <div class="toggle-container">
+          <button id="camera-toggle">📷</button>
+          <button id="theme-toggle">☀️</button>
+          <button id="realtime-toggle">✖</button>
+        </div>
+        <button id="select-area-toggle">Выделить область</button>
+        <label for="chart-style">Стиль графика:</label>
+        <select id="chart-style">
+          <option value="smooth-blue">Сглаженный</option>
+        </select>
+        <label for="invert-x">
+          <input type="checkbox" id="invert-x" checked> Инверсия по оси X
+        </label>
+        <button id="transmission-toggle">Пропускание</button>
+        <button id="background-toggle">Сохранить как фоновый спектр</button>
+        <button id="save-spectrum">Сохранить спектр</button>
+
+        <div class="smoothing-control">
+          <label for="smoothing-factor">Сглаживание: <span id="smoothing-value" class="smoothing-value">0</span></label>
+          <input type="range" id="smoothing-factor" min="0" max="10" value="0">
+        </div>
+
+        <label for="export-format">Формат экспорта:</label>
+        <select id="export-format">
+          <option value="PNG">PNG</option>
+          <option value="SVG">SVG</option>
+          <option value="SPC">SPC</option>
+          <option value="CSV">CSV</option>
+        </select>
+        <button id="export-spectrum">Экспорт</button>
+        <label for="sensitivity">Чувствительность:</label>
+        <input type="range" id="sensitivity" min="0" max="100" value="50" step="1">
+        <label for="show-peaks">
+          <input type="checkbox" id="show-peaks"> Показать пики
+        </label>
+        <label id="peak-threshold-container" style="display: none;">
+          Порог пиков: <input type="range" id="peak-threshold" min="1" max="100" value="5">
+        </label>
+        <label for="show-valleys">
+          <input type="checkbox" id="show-valleys"> Показать провалы
+        </label>
+        <label id="valley-threshold-container" style="display: none;">
+          Порог провалов: <input type="range" id="valley-threshold" min="1" max="100" value="90">
+        </label>
+        <div class="calibration">
+          <h3>Калибровка</h3>
+          <label for="calibration-point1">
+            Точка 1 (нм): <input type="number" id="calibration-point1" min="380" max="1145" value="435">
+          </label>
+          <label for="calibration-point2">
+            Точка 2 (нм): <input type="number" id="calibration-point2" min="380" max="1145" value="882">
+          </label>
+          <button id="start-calibration">Начать калибровку</button>
+          <p id="calibration-status">Выберите 2 точки на графике</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="export-modal" class="modal">
+    <div class="modal-content">
+      <h3>Выберите графики для экспорта</h3>
+      <div id="spectrum-options"></div>
+      <button id="confirm-export">Экспортировать</button>
+    </div>
+  </div>
+
+  <script>
+    // === Language support ===
+    const translations = {
+      ru: {
+        'currentSpectrum': 'Текущий спектр',
+        'selectArea': 'Выделить область',
+        'finishSelection': 'Завершить выделение',
+        'cancelSelection': 'Отменить выделение',
+        'chartStyle': 'Стиль графика:',
+        'smoothBlue': 'Сглаженный',
+        'invertX': 'Инверсия по оси X',
+        'transmission': 'Пропускание',
+        'absorption': 'Поглощение',
+        'saveAsBackground': 'Сохранить как фоновый спектр',
+        'resetBackground': 'Сбросить фоновый спектр',
+        'saveSpectrum': 'Сохранить спектр',
+        'smoothing': 'Сглаживание:',
+        'exportFormat': 'Формат экспорта:',
+        'export': 'Экспорт',
+        'sensitivity': 'Чувствительность:',
+        'showPeaks': 'Показать пики',
+        'peakThreshold': 'Порог пиков:',
+        'showValleys': 'Показать провалы',
+        'valleyThreshold': 'Порог провалов:',
+        'calibration': 'Калибровка',
+        'point1': 'Точка 1 (нм):',
+        'point2': 'Точка 2 (нм):',
+        'startCalibration': 'Начать калибровку',
+        'resetCalibration': 'Сбросить калибровку',
+        'select2points': 'Выберите 2 точки на графике',
+        'clickFirst': 'Кликните на график для выбора первой точки',
+        'clickSecond': 'Кликните на график для выбора второй точки',
+        'calibrationDone': 'Калибровка завершена',
+        'exportModalTitle': 'Выберите графики для экспорта',
+        'confirmExport': 'Экспортировать',
+        'noSavedSpectra': 'Нет сохранённых спектров для экспорта!',
+        'selectAtLeastOne': 'Выберите хотя бы один график для экспорта!',
+        'spcOneOnly': 'Формат SPC поддерживает экспорт только одного графика. Выберите один график для экспорта в SPC.',
+        'wavelength': 'Длина волны (нм)',
+        'intensity': 'Интенсивность (%)',
+        'color': 'Цвет',
+        'name': 'Название',
+        'legendWavelength': 'Длина волны (нм)',
+        'legendIntensity': 'Интенсивность (%)',
+      },
+      en: {
+        'currentSpectrum': 'Current Spectrum',
+        'selectArea': 'Select Area',
+        'finishSelection': 'Finish Selection',
+        'cancelSelection': 'Cancel Selection',
+        'chartStyle': 'Chart Style:',
+        'smoothBlue': 'Smoothed',
+        'invertX': 'Invert X Axis',
+        'transmission': 'Transmission',
+        'absorption': 'Absorption',
+        'saveAsBackground': 'Set as Background Spectrum',
+        'resetBackground': 'Reset Background Spectrum',
+        'saveSpectrum': 'Save Spectrum',
+        'smoothing': 'Smoothing:',
+        'exportFormat': 'Export Format:',
+        'export': 'Export',
+        'sensitivity': 'Sensitivity:',
+        'showPeaks': 'Show Peaks',
+        'peakThreshold': 'Peak Threshold:',
+        'showValleys': 'Show Valleys',
+        'valleyThreshold': 'Valley Threshold:',
+        'calibration': 'Calibration',
+        'point1': 'Point 1 (nm):',
+        'point2': 'Point 2 (nm):',
+        'startCalibration': 'Start Calibration',
+        'resetCalibration': 'Reset Calibration',
+        'select2points': 'Select 2 points on the chart',
+        'clickFirst': 'Click on the chart to select the first point',
+        'clickSecond': 'Click on the chart to select the second point',
+        'calibrationDone': 'Calibration complete',
+        'exportModalTitle': 'Select spectra to export',
+        'confirmExport': 'Export',
+        'noSavedSpectra': 'No saved spectra to export!',
+        'selectAtLeastOne': 'Select at least one spectrum to export!',
+        'spcOneOnly': 'SPC format supports only one spectrum. Select one spectrum to export as SPC.',
+        'wavelength': 'Wavelength (nm)',
+        'intensity': 'Intensity (%)',
+        'color': 'Color',
+        'name': 'Name',
+        'legendWavelength': 'Wavelength (nm)',
+        'legendIntensity': 'Intensity (%)',
+      }
+    };
+    let currentLang = localStorage.getItem('spectr_lang') || 'ru';
+
+    function t(key) {
+      return translations[currentLang][key] || key;
+    }
+
+    function updateLanguage() {
+      document.getElementById('language-switcher').textContent = currentLang === 'ru' ? 'EN' : 'RU';
+
+      document.getElementById('select-area-toggle').textContent = selectedArea ? t('cancelSelection') : t('selectArea');
+      document.getElementById('transmission-toggle').textContent = isTransmissionMode ? t('transmission') : t('absorption');
+      document.getElementById('background-toggle').textContent = isBackgroundSet ? t('resetBackground') : t('saveAsBackground');
+      document.getElementById('save-spectrum').textContent = t('saveSpectrum');
+      document.getElementById('export-spectrum').textContent = t('export');
+
+      const chartStyleLabel = document.querySelector('label[for="chart-style"]');
+      if (chartStyleLabel) chartStyleLabel.textContent = t('chartStyle');
+      const invertXLabel = document.querySelector('label[for="invert-x"]');
+      if (invertXLabel) {
+        const input = invertXLabel.querySelector('input');
+        invertXLabel.innerHTML = '';
+        invertXLabel.appendChild(input);
+        invertXLabel.append(' ' + t('invertX'));
+      }
+      const smoothingLabel = document.querySelector('label[for="smoothing-factor"]');
+      if (smoothingLabel) smoothingLabel.childNodes[0].textContent = t('smoothing') + ' ';
+      const exportFormatLabel = document.querySelector('label[for="export-format"]');
+      if (exportFormatLabel) exportFormatLabel.textContent = t('exportFormat');
+      const sensitivityLabel = document.querySelector('label[for="sensitivity"]');
+      if (sensitivityLabel) sensitivityLabel.textContent = t('sensitivity');
+
+      const showPeaksLabel = document.querySelector('label[for="show-peaks"]');
+      if (showPeaksLabel) {
+        const input = showPeaksLabel.querySelector('input');
+        showPeaksLabel.innerHTML = '';
+        showPeaksLabel.appendChild(input);
+        showPeaksLabel.append(' ' + t('showPeaks'));
+      }
+      const showValleysLabel = document.querySelector('label[for="show-valleys"]');
+      if (showValleysLabel) {
+        const input = showValleysLabel.querySelector('input');
+        showValleysLabel.innerHTML = '';
+        showValleysLabel.appendChild(input);
+        showValleysLabel.append(' ' + t('showValleys'));
+      }
+
+      const peakThresholdContainer = document.getElementById('peak-threshold-container');
+      if (peakThresholdContainer) peakThresholdContainer.childNodes[0].textContent = t('peakThreshold') + ' ';
+      const valleyThresholdContainer = document.getElementById('valley-threshold-container');
+      if (valleyThresholdContainer) valleyThresholdContainer.childNodes[0].textContent = t('valleyThreshold') + ' ';
+
+      const calibrationHeader = document.querySelector('.calibration h3');
+      if (calibrationHeader) calibrationHeader.textContent = t('calibration');
+      const calibrationPoint1Label = document.querySelector('label[for="calibration-point1"]');
+      if (calibrationPoint1Label) {
+        const input = calibrationPoint1Label.querySelector('input');
+        calibrationPoint1Label.innerHTML = '';
+        calibrationPoint1Label.append(t('point1') + ' ');
+        calibrationPoint1Label.appendChild(input);
+      }
+      const calibrationPoint2Label = document.querySelector('label[for="calibration-point2"]');
+      if (calibrationPoint2Label) {
+        const input = calibrationPoint2Label.querySelector('input');
+        calibrationPoint2Label.innerHTML = '';
+        calibrationPoint2Label.append(t('point2') + ' ');
+        calibrationPoint2Label.appendChild(input);
+      }
+      const startCalibrationBtn = document.getElementById('start-calibration');
+      if (startCalibrationBtn) startCalibrationBtn.textContent = isCalibrationActive ? t('resetCalibration') : t('startCalibration');
+      const calibrationStatus = document.getElementById('calibration-status');
+      if (calibrationStatus) calibrationStatus.textContent = calibrationPoints.length === 0 ? t('select2points') : (calibrationPoints.length === 1 ? t('clickSecond') : t('calibrationDone'));
+
+      const exportModalTitle = document.querySelector('#export-modal .modal-content h3');
+      if (exportModalTitle) exportModalTitle.textContent = t('exportModalTitle');
+      const confirmExportBtn = document.getElementById('confirm-export');
+      if (confirmExportBtn) confirmExportBtn.textContent = t('confirmExport');
+
+      const currentSpectrumLabel = document.getElementById('current-spectrum-label');
+      if (currentSpectrumLabel) currentSpectrumLabel.textContent = t('currentSpectrum');
+
+      const spectrumTabs = document.querySelectorAll('.spectrum-tab .spectrum-label');
+      spectrumTabs.forEach(label => {
+        if (label.textContent.startsWith('Spectr_') || label.textContent.startsWith('Спектр_')) {
+          const num = label.textContent.replace(/\D+/g, '');
+          label.textContent = currentLang === 'ru' ? `Спектр_${num}` : `Spectr_${num}`;
+        }
+      });
+
+      const calibrationPoint1 = document.getElementById('calibration-point1');
+      const calibrationPoint2 = document.getElementById('calibration-point2');
+      if (calibrationPoint1) calibrationPoint1.placeholder = t('point1');
+      if (calibrationPoint2) calibrationPoint2.placeholder = t('point2');
+
+      const chartStyleSelect = document.getElementById('chart-style');
+      if (chartStyleSelect && chartStyleSelect.options.length > 0) {
+        chartStyleSelect.options[0].textContent = t('smoothBlue');
+      }
+
+      const exportFormatSelect = document.getElementById('export-format');
+      if (exportFormatSelect) {
+        for (let i = 0; i < exportFormatSelect.options.length; i++) {
+          const opt = exportFormatSelect.options[i];
+          if (opt.value === 'PNG') opt.textContent = 'PNG';
+          if (opt.value === 'SVG') opt.textContent = 'SVG';
+          if (opt.value === 'SPC') opt.textContent = 'SPC';
+          if (opt.value === 'CSV') opt.textContent = 'CSV';
+        }
+      }
+
+      spectrumChart.options.scales.x.title.text = t('legendWavelength');
+      spectrumChart.options.scales.y.title.text = t('legendIntensity');
+      spectrumChart.options.plugins.tooltip.callbacks.title = function(context) {
+        return context[0].dataset.label + '\n' + t('legendWavelength') + ': ' + context[0].label;
+      };
+      spectrumChart.options.plugins.tooltip.callbacks.label = function(context) {
+        return t('legendIntensity') + ': ' + context.parsed.y.toFixed(2);
+      };
+      spectrumChart.update();
+
+      // --- ДОБАВЛЕНО: обновлять label у liveSpectrumDataset ---
+      liveSpectrumDataset.label = t('currentSpectrum');
+      spectrumChart.update();
+    }
+
+    document.getElementById('language-switcher').addEventListener('click', () => {
+      currentLang = currentLang === 'ru' ? 'en' : 'ru';
+      localStorage.setItem('spectr_lang', currentLang);
+      updateLanguage();
+    });
+
+    const video = document.getElementById('camera-feed');
+    const selectionCanvas = document.getElementById('selection-canvas');
+    const selectionCtx = selectionCanvas.getContext('2d');
+    const overlayCanvas = document.getElementById('overlay-canvas');
+    const overlayCtx = overlayCanvas.getContext('2d');
+    const themeToggle = document.getElementById('theme-toggle');
+    const cameraToggle = document.getElementById('camera-toggle');
+    const realtimeToggle = document.getElementById('realtime-toggle');
+    const selectAreaToggle = document.getElementById('select-area-toggle');
+    const transmissionToggle = document.getElementById('transmission-toggle');
+    const backgroundToggle = document.getElementById('background-toggle');
+    const saveSpectrumButton = document.getElementById('save-spectrum');
+    const exportSpectrumButton = document.getElementById('export-spectrum');
+    const exportFormatSelect = document.getElementById('export-format');
+    const savedSpectrumsContainer = document.getElementById('saved-spectrums');
+    const sensitivityInput = document.getElementById('sensitivity');
+    const showPeaksCheckbox = document.getElementById('show-peaks');
+    const peakThresholdInput = document.getElementById('peak-threshold');
+    const peakThresholdContainer = document.getElementById('peak-threshold-container');
+    const showValleysCheckbox = document.getElementById('show-valleys');
+    const valleyThresholdInput = document.getElementById('valley-threshold');
+    const valleyThresholdContainer = document.getElementById('valley-threshold-container');
+    const invertXCheckbox = document.getElementById('invert-x');
+    const smoothingFactorInput = document.getElementById('smoothing-factor');
+    const smoothingValue = document.getElementById('smoothing-value');
+    const calibrationPoint1Input = document.getElementById('calibration-point1');
+    const calibrationPoint2Input = document.getElementById('calibration-point2');
+    const startCalibrationButton = document.getElementById('start-calibration');
+    const calibrationStatus = document.getElementById('calibration-status');
+    const chartStyleSelect = document.getElementById('chart-style');
+    const chartWrapper = document.querySelector('.chart-wrapper');
+    const resizeHandle = document.getElementById('resize-handle');
+    const topLeft = document.getElementById('top-left');
+    const topRight = document.getElementById('top-right');
+    const bottomLeft = document.getElementById('bottom-left');
+    const bottomRight = document.getElementById('bottom-right');
+    const cameraContainer = document.querySelector('.camera-container');
+    const exportModal = document.getElementById('export-modal');
+    const spectrumOptions = document.getElementById('spectrum-options');
+    const confirmExportButton = document.getElementById('confirm-export');
+    const currentSpectrumHeader = document.getElementById('current-spectrum-header');
+    const currentSpectrumDot = document.getElementById('current-spectrum-dot');
+    const currentSpectrumLabel = document.getElementById('current-spectrum-label');
+    const currentSpectrumPalette = document.getElementById('current-spectrum-palette');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let isTransmissionMode = true;
+    let backgroundSpectrum = null;
+    let isBackgroundSet = false;
+    let isPeaksVisible = false;
+    let isValleysVisible = false;
+    let sensitivity = 1.0;
+    let isInvertedX = true;
+    let smoothingFactor = 0;
+    let isCameraVisible = false;
+    let calibrationPoints = [];
+    let isCalibrationActive = false;
+    let chartStyle = 'smooth-blue';
+    let peakThreshold = 5;
+    let valleyThreshold = 90;
+    let savedSpectrumCount = 0;
+    let liveSpectrumActive = true;
+    let isRealtimeRendering = true;
+    let isSelectingArea = false;
+    let selectionStart = null;
+    let selectionEnd = null;
+    let selectedArea = null;
+    let isDragging = false;
+    let isResizing = false;
+    let resizeCorner = null;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let clipActive = false;
+    let isChartResizing = false;
+    let chartResizeStartX = 0;
+    let chartResizeStartY = 0;
+    let chartResizeStartWidth = 0;
+    let chartResizeStartHeight = 0;
+    let currentRawSpectrum = [];
+    let wavelengthLabels = [];
+    for (let i = 380; i <= 1145; i += 40) {
+      wavelengthLabels.push(i);
+    }
+
+    const spectrumChart = new Chart(document.getElementById('spectrum-chart'), {
+      type: 'line',
+      data: {
+        labels: wavelengthLabels,
+        datasets: []
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: { 
+              display: true, 
+              text: t('legendWavelength'), 
+              color: '#000000',
+              font: {
+                size: Math.max(12, window.innerWidth * 0.01)
+              }
+            },
+            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+            ticks: { 
+              color: '#000000',
+              font: {
+                size: Math.max(10, window.innerWidth * 0.008)
+              },
+              rotation: -45
+            }
+          },
+          y: {
+            title: { 
+              display: true, 
+              text: t('legendIntensity'), 
+              color: '#000000',
+              font: {
+                size: Math.max(12, window.innerWidth * 0.01)
+              }
+            },
+            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+            ticks: { 
+              color: '#000000', 
+              stepSize: 10,
+              font: {
+                size: Math.max(10, window.innerWidth * 0.008)
+              },
+              autoSkip: true,
+              maxTicksLimit: 11
+            },
+            min: 0,
+            max: 100
+          }
+        },
+        elements: {
+          point: { radius: 0 },
+          line: { borderWidth: 1 }
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              title: function(context) {
+                // Имя спектра + длина волны
+                return context[0].dataset.label + '\n' + t('legendWavelength') + ': ' + context[0].label;
+              },
+              label: function(context) {
+                return t('legendIntensity') + ': ' + context.parsed.y.toFixed(2);
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const randomColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+    const liveSpectrumDataset = {
+      label: t('currentSpectrum'),
+      data: [],
+      borderColor: randomColor,
+      borderWidth: 1,
+      fill: false,
+      pointRadius: 0,
+      pointBackgroundColor: randomColor
+    };
+    spectrumChart.data.datasets.push(liveSpectrumDataset);
+
+    const colorPalette = [
+      '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
+      '#FF00FF', '#00FFFF', '#FFA500', '#800080',
+      '#008000', '#000080', '#FFC107', '#4CAF50',
+      '#2196F3', '#E91E63', '#9C27B0', '#607D8B'
+    ];
+
+    colorPalette.forEach(color => {
+      const colorOption = document.createElement('div');
+      colorOption.className = 'color-option';
+      colorOption.style.backgroundColor = color;
+      colorOption.addEventListener('click', () => {
+        currentSpectrumDot.style.backgroundColor = color;
+        liveSpectrumDataset.borderColor = color;
+        liveSpectrumDataset.pointBackgroundColor = color;
+        spectrumChart.update();
+        currentSpectrumPalette.style.display = 'none';
+      });
+      currentSpectrumPalette.appendChild(colorOption);
+    });
+
+    currentSpectrumDot.style.backgroundColor = randomColor;
+    currentSpectrumPalette.style.display = 'none';
+
+    currentSpectrumDot.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentSpectrumPalette.style.display = currentSpectrumPalette.style.display === 'block' ? 'none' : 'block';
+    });
+
+    currentSpectrumLabel.addEventListener('blur', () => {
+      if (!currentSpectrumLabel.textContent.trim()) {
+        currentSpectrumLabel.textContent = t('currentSpectrum');
+      }
+      liveSpectrumDataset.label = currentSpectrumLabel.textContent;
+      spectrumChart.update();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!currentSpectrumHeader.contains(e.target)) {
+        currentSpectrumPalette.style.display = 'none';
+      }
+    });
+
+    function adjustLayout() {
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+
+      cameraContainer.style.maxWidth = `${screenWidth - 260}px`;
+      if (isCameraVisible && video.videoWidth && video.videoHeight) {
+        const aspectRatio = video.videoWidth / video.videoHeight;
+        const newHeight = chartWrapper.offsetWidth / aspectRatio;
+        cameraContainer.style.height = `${newHeight}px`;
+      }
+
+      chartWrapper.style.maxWidth = `${screenWidth - 260}px`;
+
+      spectrumChart.options.scales.x.title.font.size = Math.max(12, screenWidth * 0.01);
+      spectrumChart.options.scales.x.ticks.font.size = Math.max(10, screenWidth * 0.008);
+      spectrumChart.options.scales.y.title.font.size = Math.max(12, screenWidth * 0.01);
+      spectrumChart.options.scales.y.ticks.font.size = Math.max(10, window.innerWidth * 0.008);
+
+      spectrumChart.update();
+    }
+
+    window.addEventListener('load', () => {
+      adjustLayout();
+      updateLanguage();
+      const langSwitcher = document.getElementById('language-switcher');
+      if (langSwitcher) {
+        langSwitcher.classList.toggle('dark', document.body.classList.contains('dark-theme'));
+      }
+    });
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        console.error('Ошибка доступа к камере:', err);
+        alert('Не удалось получить доступ к камере. Проверьте разрешения и подключение.');
+      });
+
+    video.addEventListener('loadedmetadata', () => {
+      selectionCanvas.width = video.videoWidth;
+      selectionCanvas.height = video.videoHeight;
+      overlayCanvas.width = video.videoWidth;
+      overlayCanvas.height = video.videoHeight;
+      selectionCanvas.style.width = video.offsetWidth + 'px';
+      selectionCanvas.style.height = video.offsetHeight + 'px';
+      overlayCanvas.style.width = video.offsetWidth + 'px';
+      overlayCanvas.style.height = video.offsetHeight + 'px';
+      adjustLayout();
+      updateResizeCorners();
+      mainLoop();
+    });
+
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark-theme');
+      themeToggle.textContent = document.body.classList.contains('dark-theme') ? '🌙' : '☀️';
+      updateChartTheme();
+      // Обновить цвет language-switcher
+      const langSwitcher = document.getElementById('language-switcher');
+      if (langSwitcher) {
+        // Триггерим перерисовку через смену класса body
+        langSwitcher.classList.toggle('dark', document.body.classList.contains('dark-theme'));
+      }
+    });
+
+    realtimeToggle.addEventListener('click', () => {
+      isRealtimeRendering = !isRealtimeRendering;
+      realtimeToggle.classList.toggle('active', isRealtimeRendering);
+      realtimeToggle.textContent = isRealtimeRendering ? '✖' : '✔';
+      toggleLiveSpectrum();
+    });
+
+    function toggleLiveSpectrum() {
+      const liveIndex = spectrumChart.data.datasets.indexOf(liveSpectrumDataset);
+      if (isRealtimeRendering) {
+        if (liveIndex === -1) {
+          spectrumChart.data.datasets.push(liveSpectrumDataset);
+        }
+      } else {
+        if (liveIndex !== -1) {
+          spectrumChart.data.datasets.splice(liveIndex, 1);
+        }
+      }
+      spectrumChart.update();
+    }
+
+    function updateChartTheme() {
+      const isDarkTheme = document.body.classList.contains('dark-theme');
+      const gridColor = isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+      const tickColor = isDarkTheme ? '#ffffff' : '#000000';
+      const titleColor = isDarkTheme ? '#ffffff' : '#000000';
+
+      spectrumChart.options.scales.x.grid.color = gridColor;
+      spectrumChart.options.scales.x.ticks.color = tickColor;
+      spectrumChart.options.scales.x.title.color = titleColor;
+      spectrumChart.options.scales.y.grid.color = gridColor;
+      spectrumChart.options.scales.y.ticks.color = tickColor;
+      spectrumChart.options.scales.y.title.color = titleColor;
+      spectrumChart.update();
+    }
+
+    cameraToggle.addEventListener('click', () => {
+      isCameraVisible = !isCameraVisible;
+      cameraContainer.style.display = isCameraVisible ? 'flex' : 'none';
+      video.style.display = isCameraVisible ? 'block' : 'none';
+      selectionCanvas.style.width = video.offsetWidth + 'px';
+      selectionCanvas.style.height = video.offsetHeight + 'px';
+      overlayCanvas.style.width = video.offsetWidth + 'px';
+      overlayCanvas.style.height = video.offsetHeight + 'px';
+      overlayCanvas.style.display = isCameraVisible ? 'block' : 'none';
+      selectionCanvas.style.display = isCameraVisible && (isSelectingArea || selectedArea) ? 'block' : 'none';
+      selectionCanvas.classList.toggle('active', selectedArea && !isSelectingArea);
+      overlayCanvas.classList.toggle('active', isSelectingArea);
+      clipActive = selectedArea && !isSelectingArea;
+      updateClipPath();
+      updateResizeCorners();
+      adjustLayout();
+    });
+
+    selectAreaToggle.addEventListener('click', () => {
+      if (!selectedArea) {
+        isSelectingArea = true;
+        selectAreaToggle.textContent = 'Завершить выделение';
+        video.style.cursor = 'crosshair';
+        overlayCanvas.classList.add('active');
+      } else {
+        selectedArea = null;
+        selectionStart = null;
+        selectionEnd = null;
+        selectionCtx.clearRect(0, 0, selectionCanvas.width, selectionCanvas.height);
+        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        selectionCanvas.style.display = 'none';
+        overlayCanvas.style.display = isCameraVisible ? 'block' : 'none';
+        selectionCanvas.classList.remove('active');
+        overlayCanvas.classList.remove('active');
+        clipActive = false;
+        selectAreaToggle.textContent = 'Выделить область';
+        video.style.cursor = 'default';
+        updateClipPath();
+        updateResizeCorners();
+        return;
+      }
+
+      selectionCanvas.style.display = isCameraVisible && (isSelectingArea || selectedArea) ? 'block' : 'none';
+      overlayCanvas.style.display = isCameraVisible ? 'block' : 'none';
+    });
+
+    function updateClipPath() {
+      if (selectedArea && clipActive && isCameraVisible) {
+        const rect = video.getBoundingClientRect();
+        const scaleX = rect.width / video.videoWidth;
+        const scaleY = rect.height / video.videoHeight;
+        const x = selectedArea.x * scaleX;
+        const y = selectedArea.y * scaleY;
+        const width = selectedArea.width * scaleX;
+        const height = selectedArea.height * scaleY;
+        overlayCanvas.style.clipPath = `polygon(${x}px ${y}px, ${x + width}px ${y}px, ${x + width}px ${y + height}px, ${x}px ${y + height}px)`;
+      } else {
+        overlayCanvas.style.clipPath = 'none';
+      }
+    }
+
+    function drawSelectionFrame() {
+      selectionCtx.clearRect(0, 0, selectionCanvas.width, selectionCanvas.height);
+      selectionCtx.strokeStyle = 'yellow';
+      selectionCtx.lineWidth = 2;
+      selectionCtx.beginPath();
+      selectionCtx.rect(selectedArea.x, selectedArea.y, selectedArea.width, selectedArea.height);
+      selectionCtx.stroke();
+    }
+
+    function updateResizeCorners() {
+      if (!selectedArea || !isCameraVisible) {
+        topLeft.style.display = 'none';
+        topRight.style.display = 'none';
+        bottomLeft.style.display = 'none';
+        bottomRight.style.display = 'none';
+        return;
+      }
+      const rect = video.getBoundingClientRect();
+      const scaleX = rect.width / video.videoWidth;
+      const scaleY = rect.height / video.videoHeight;
+      topLeft.style.left = (selectedArea.x * scaleX) + 'px';
+      topLeft.style.top = (selectedArea.y * scaleY) + 'px';
+      topRight.style.left = ((selectedArea.x + selectedArea.width) * scaleX - 10) + 'px';
+      topRight.style.top = (selectedArea.y * scaleY) + 'px';
+      bottomLeft.style.left = (selectedArea.x * scaleX) + 'px';
+      bottomLeft.style.top = ((selectedArea.y + selectedArea.height) * scaleY - 10) + 'px';
+      bottomRight.style.left = ((selectedArea.x + selectedArea.width) * scaleX - 10) + 'px';
+      bottomRight.style.top = ((selectedArea.y + selectedArea.height) * scaleY - 10) + 'px';
+      topLeft.style.display = 'block';
+      topRight.style.display = 'block';
+      bottomLeft.style.display = 'block';
+      bottomRight.style.display = 'block';
+    }
+
+    overlayCanvas.addEventListener('mousedown', (e) => {
+      if (!isSelectingArea) return;
+      const rect = overlayCanvas.getBoundingClientRect();
+      const scaleX = overlayCanvas.width / rect.width;
+      const scaleY = overlayCanvas.height / rect.height;
+      selectionStart = {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    });
+
+    overlayCanvas.addEventListener('mousemove', (e) => {
+      if (!isSelectingArea || !selectionStart) return;
+      const rect = overlayCanvas.getBoundingClientRect();
+      const scaleX = overlayCanvas.width / rect.width;
+      const scaleY = overlayCanvas.height / rect.height;
+      selectionEnd = {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+
+      selectionCtx.clearRect(0, 0, selectionCanvas.width, selectionCanvas.height);
+      selectionCtx.strokeStyle = 'yellow';
+      selectionCtx.lineWidth = 2;
+      selectionCtx.beginPath();
+      selectionCtx.rect(
+        selectionStart.x,
+        selectionStart.y,
+        selectionEnd.x - selectionStart.x,
+        selectionEnd.y - selectionStart.y
+      );
+      selectionCtx.stroke();
+    });
+
+    overlayCanvas.addEventListener('mouseup', () => {
+      if (!isSelectingArea || !selectionStart || !selectionEnd) return;
+      selectedArea = {
+        x: Math.min(selectionStart.x, selectionEnd.x),
+        y: Math.min(selectionStart.y, selectionEnd.y),
+        width: Math.abs(selectionEnd.x - selectionStart.x),
+        height: Math.abs(selectionEnd.y - selectionStart.y)
+      };
+      isSelectingArea = false;
+      selectAreaToggle.textContent = 'Отменить выделение';
+      video.style.cursor = 'default';
+      drawSelectionFrame();
+      updateResizeCorners();
+      selectionCanvas.classList.add('active');
+      overlayCanvas.classList.remove('active');
+      clipActive = true;
+      updateClipPath();
+      console.log('Выделенная область зафиксирована:', selectedArea);
+    });
+
+    selectionCanvas.addEventListener('mousedown', (e) => {
+      if (isSelectingArea || !selectedArea) return;
+      const rect = overlayCanvas.getBoundingClientRect();
+      const scaleX = overlayCanvas.width / rect.width;
+      const scaleY = overlayCanvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+
+      if (x >= selectedArea.x && x <= selectedArea.x + selectedArea.width && 
+          y >= selectedArea.y && y <= selectedArea.y + selectedArea.height) {
+        isDragging = true;
+        dragStartX = x - selectedArea.x;
+        dragStartY = y - selectedArea.y;
+        clipActive = false;
+        overlayCanvas.style.clipPath = 'none';
+      }
+    });
+
+    topLeft.addEventListener('mousedown', (e) => {
+      if (isSelectingArea || !selectedArea) return;
+      isResizing = true;
+      resizeCorner = 'top-left';
+      clipActive = false;
+      overlayCanvas.style.clipPath = 'none';
+      e.stopPropagation();
+    });
+
+    topRight.addEventListener('mousedown', (e) => {
+      if (isSelectingArea || !selectedArea) return;
+      isResizing = true;
+      resizeCorner = 'top-right';
+      clipActive = false;
+      overlayCanvas.style.clipPath = 'none';
+      e.stopPropagation();
+    });
+
+    bottomLeft.addEventListener('mousedown', (e) => {
+      if (isSelectingArea || !selectedArea) return;
+      isResizing = true;
+      resizeCorner = 'bottom-left';
+      clipActive = false;
+      overlayCanvas.style.clipPath = 'none';
+      e.stopPropagation();
+    });
+
+    bottomRight.addEventListener('mousedown', (e) => {
+      if (isSelectingArea || !selectedArea) return;
+      isResizing = true;
+      resizeCorner = 'bottom-right';
+      clipActive = false;
+      overlayCanvas.style.clipPath = 'none';
+      e.stopPropagation();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging && !isResizing && !isChartResizing) return;
+
+      if (isChartResizing) {
+        const deltaX = e.clientX - chartResizeStartX;
+        const deltaY = e.clientY - chartResizeStartY;
+
+        if (e.shiftKey) {
+          const newHeight = Math.max(200, chartResizeStartHeight + deltaY);
+          chartWrapper.style.height = `${newHeight}px`;
+        } else {
+          const newWidth = Math.max(200, chartResizeStartWidth - deltaX);
+          const newHeight = Math.max(200, chartResizeStartHeight + deltaY);
+          chartWrapper.style.width = `${newWidth}px`;
+          chartWrapper.style.height = `${newHeight}px`;
+          chartWrapper.style.left = `${chartResizeStartX + deltaX}px`;
+        }
+        adjustLayout();
+      } else {
+        const rect = overlayCanvas.getBoundingClientRect();
+        const scaleX = overlayCanvas.width / rect.width;
+        const scaleY = overlayCanvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+
+        if (isDragging) {
+          selectedArea.x = Math.max(0, Math.min(x - dragStartX, video.videoWidth - selectedArea.width));
+          selectedArea.y = Math.max(0, Math.min(y - dragStartY, video.videoHeight - selectedArea.height));
+          drawSelectionFrame();
+          updateResizeCorners();
+        } else if (isResizing) {
+          switch (resizeCorner) {
+            case 'top-left':
+              selectedArea.width += selectedArea.x - x;
+              selectedArea.height += selectedArea.y - y;
+              selectedArea.x = x;
+              selectedArea.y = y;
+              break;
+            case 'top-right':
+              selectedArea.width = x - selectedArea.x;
+              selectedArea.height += selectedArea.y - y;
+              selectedArea.y = y;
+              break;
+            case 'bottom-left':
+              selectedArea.width += selectedArea.x - x;
+              selectedArea.x = x;
+              selectedArea.height = y - selectedArea.y;
+              break;
+            case 'bottom-right':
+              selectedArea.width = x - selectedArea.x;
+              selectedArea.height = y - selectedArea.y;
+              break;
+          }
+          selectedArea.x = Math.max(0, selectedArea.x);
+          selectedArea.y = Math.max(0, selectedArea.y);
+          selectedArea.width = Math.max(10, Math.min(video.videoWidth - selectedArea.x, selectedArea.width));
+          selectedArea.height = Math.max(10, Math.min(video.videoHeight - selectedArea.y, selectedArea.height));
+          drawSelectionFrame();
+          updateResizeCorners();
+        }
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging || isResizing) {
+        clipActive = true;
+        updateClipPath();
+      }
+      isDragging = false;
+      isResizing = false;
+      isChartResizing = false;
+      resizeCorner = null;
+    });
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isChartResizing = true;
+      chartResizeStartX = e.clientX;
+      chartResizeStartY = e.clientY;
+      chartResizeStartWidth = chartWrapper.offsetWidth;
+      chartResizeStartHeight = chartWrapper.offsetHeight;
+      e.preventDefault();
+    });
+
+    transmissionToggle.addEventListener('click', () => {
+      isTransmissionMode = !isTransmissionMode;
+      transmissionToggle.textContent = isTransmissionMode ? 'Пропускание' : 'Поглощение';
+      analyzeImage();
+    });
+
+   backgroundToggle.addEventListener('click', () => {
+  if (!isBackgroundSet) {
+    // Сохраняем текущий спектр как базовый уровень (0%)
+    backgroundSpectrum = currentRawSpectrum.slice();
+    backgroundToggle.textContent = 'Сбросить фоновый спектр';
+    isBackgroundSet = true;
+
+    // Обнуляем текущий график
+    liveSpectrumDataset.data = new Array(backgroundSpectrum.length).fill(0);
+    spectrumChart.update();
+  } else {
+    backgroundSpectrum = null;
+    backgroundToggle.textContent = 'Сохранить как фоновый спектр';
+    isBackgroundSet = false;
+  }
+  analyzeImage();
+});
+
+    smoothingFactorInput.addEventListener('input', () => {
+      smoothingFactor = parseInt(smoothingFactorInput.value);
+      smoothingValue.textContent = smoothingFactor;
+      analyzeImage();
+    });
+
+    function smoothData(data, windowSize) {
+      if (windowSize < 1) return data.slice();
+
+      const smoothed = [];
+      const halfWindow = Math.floor(windowSize / 2);
+
+      for (let i = 0; i < data.length; i++) {
+        let sum = 0;
+        let count = 0;
+
+        for (let j = Math.max(0, i - halfWindow); j <= Math.min(data.length - 1, i + halfWindow); j++) {
+          sum += data[j];
+          count++;
+        }
+
+        smoothed.push(sum / count);
+      }
+
+      return smoothed;
+    }
+
+    saveSpectrumButton.addEventListener('click', () => {
+      if (!isRealtimeRendering) {
+        alert('Сохранение возможно только при включённой отрисовке в реальном времени!');
+        return;
+      }
+
+      savedSpectrumCount++;
+      const currentSpectrum = liveSpectrumDataset.data.slice();
+      const currentColor = liveSpectrumDataset.borderColor;
+
+      const savedDataset = {
+        label: `Spectr_${savedSpectrumCount}`,
+        data: currentSpectrum,
+        borderColor: currentColor,
+        borderWidth: 1,
+        fill: false,
+        pointRadius: 0,
+        pointBackgroundColor: currentColor,
+      };
+      spectrumChart.data.datasets.unshift(savedDataset);
+
+      const spectrumTab = document.createElement('div');
+      spectrumTab.className = 'spectrum-tab';
+      spectrumTab.dataset.index = 0;
+
+      const dot = document.createElement('div');
+      dot.className = 'spectrum-dot';
+      dot.style.backgroundColor = currentColor;
+
+      const label = document.createElement('span');
+      label.className = 'spectrum-label';
+      label.textContent = `Spectr_${savedSpectrumCount}`;
+      label.contentEditable = false;
+
+      label.addEventListener('dblclick', () => {
+        label.contentEditable = true;
+        label.focus();
+      });
+
+      label.addEventListener('blur', () => {
+        label.contentEditable = false;
+        if (!label.textContent.trim()) {
+          label.textContent = `Spectr_${savedSpectrumCount}`;
+        }
+        savedDataset.label = label.textContent;
+        spectrumChart.update();
+      });
+
+      label.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          label.blur();
+        }
+      });
+
+      const closeButton = document.createElement('div');
+      closeButton.className = 'spectrum-close';
+      closeButton.textContent = '×';
+      closeButton.addEventListener('click', () => {
+        const index = parseInt(spectrumTab.dataset.index);
+        spectrumChart.data.datasets.splice(index, 1);
+        savedSpectrumsContainer.removeChild(spectrumTab);
+        Array.from(savedSpectrumsContainer.children).forEach((tab, i) => {
+          tab.dataset.index = i;
+        });
+        spectrumChart.update();
+      });
+
+      const palette = document.createElement('div');
+      palette.className = 'color-palette';
+      colorPalette.forEach(color => {
+        const colorOption = document.createElement('div');
+        colorOption.className = 'color-option';
+        colorOption.style.backgroundColor = color;
+        colorOption.addEventListener('click', () => {
+          dot.style.backgroundColor = color;
+          savedDataset.borderColor = color;
+          savedDataset.pointBackgroundColor = color;
+          spectrumChart.update();
+          palette.style.display = 'none';
+        });
+        palette.appendChild(colorOption);
+      });
+
+      dot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const existingPalette = spectrumTab.querySelector('.color-palette');
+        if (existingPalette && existingPalette !== palette) {
+          existingPalette.remove();
+        }
+        if (palette.style.display === 'block') {
+          palette.style.display = 'none';
+        } else {
+          spectrumTab.appendChild(palette);
+          palette.style.display = 'block';
+        }
+      });
+
+      spectrumTab.appendChild(dot);
+      spectrumTab.appendChild(label);
+      spectrumTab.appendChild(closeButton);
+      savedSpectrumsContainer.appendChild(spectrumTab);
+
+      document.addEventListener('click', (e) => {
+        if (!spectrumTab.contains(e.target)) {
+          palette.style.display = 'none';
+        }
+      });
+
+      const newRandomColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+      liveSpectrumDataset.borderColor = newRandomColor;
+      liveSpectrumDataset.pointBackgroundColor = newRandomColor;
+      currentSpectrumDot.style.backgroundColor = newRandomColor;
+      spectrumChart.update();
+
+      console.log(`Сохранён спектр Spectr_${savedSpectrumCount} с цветом ${currentColor}:`, currentSpectrum.slice(0, 10));
+    });
+
+    exportSpectrumButton.addEventListener('click', () => {
+      const savedDatasets = spectrumChart.data.datasets.filter(dataset => dataset.label !== 'Текущий спектр');
+      if (savedDatasets.length === 0) {
+        alert(t('noSavedSpectra'));
+        return;
+      }
+
+      spectrumOptions.innerHTML = '';
+      savedDatasets.forEach((dataset, index) => {
+        const div = document.createElement('div');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `spectrum-${index}`;
+        checkbox.value = index;
+        const label = document.createElement('label');
+        label.htmlFor = `spectrum-${index}`;
+        label.textContent = dataset.label;
+        div.appendChild(checkbox);
+        div.appendChild(label);
+        spectrumOptions.appendChild(div);
+      });
+
+      exportModal.style.display = 'block';
+    });
+
+    function exportToPNG(selectedDatasets, fileName) {
+      const originalDatasets = [...spectrumChart.data.datasets];
+      const originalLabels = [...spectrumChart.data.labels];
+      const originalOptions = JSON.parse(JSON.stringify(spectrumChart.options));
+
+      spectrumChart.data.datasets = selectedDatasets;
+      spectrumChart.options.responsive = false;
+      spectrumChart.options.animation = false;
+      spectrumChart.options.plugins.legend = {
+        display: true,
+        position: 'top',
+        labels: {
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: 20
+        }
+      };
+
+      spectrumChart.update();
+
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.download = `${fileName}.png`;
+        link.href = spectrumChart.toBase64Image('image/png', 1);
+        link.click();
+
+        spectrumChart.data.datasets = originalDatasets;
+        spectrumChart.data.labels = originalLabels;
+        spectrumChart.options = originalOptions;
+        spectrumChart.update();
+      }, 1000);
+    }
+
+    function exportToSVG(selectedDatasets, fileName) {
+      const labels = spectrumChart.data.labels;
+      const width = chartWrapper.offsetWidth;
+      const height = chartWrapper.offsetHeight;
+      const padding = 50;
+
+      let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
+      svg += '<rect width="100%" height="100%" fill="white"/>';
+
+      svg += `<line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" stroke="black"/>`;
+      svg += `<line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="black"/>`;
+
+      const yTicks = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+      yTicks.forEach(tick => {
+        const y = height - padding - (tick / 100) * (height - 2 * padding);
+        svg += `<line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" stroke="rgba(0, 0, 0, 0.1)" stroke-width="1"/>`;
+        svg += `<line x1="${padding - 5}" y1="${y}" x2="${padding}" y2="${y}" stroke="black"/>`;
+        svg += `<text x="${padding - 40}" y="${y + 5}" font-size="12">${tick}%</text>`;
+      });
+
+      const xTicks = spectrumChart.scales.x.getTicks();
+      xTicks.forEach(tick => {
+        const x = padding + (tick.value / (labels.length - 1)) * (width - 2 * padding);
+        svg += `<line x1="${x}" y1="${padding}" x2="${x}" y2="${height - padding}" stroke="rgba(0, 0, 0, 0.1)" stroke-width="1"/>`;
+        svg += `<line x1="${x}" y1="${height - padding}" x2="${x}" y2="${height - padding + 5}" stroke="black"/>`;
+        svg += `<text x="${x}" y="${height - padding + 35}" font-size="12" transform="rotate(-90, ${x}, ${height - padding + 35})">${tick.label}</text>`;
+      });
+
+      svg += `<text x="${width / 2 - 50}" y="${height - 10}" font-size="14">Длина волны (нм)</text>`;
+      svg += `<text x="10" y="${height / 2}" font-size="14" transform="rotate(-90, 10, ${height / 2})">Интенсивность (%)</text>`;
+
+      const legendX = width - 150;
+      let legendY = 30;
+      const legendSpacing = 25;
+
+      selectedDatasets.forEach((dataset, index) => {
+        const color = dataset.borderColor;
+        svg += `<circle cx="${legendX}" cy="${legendY + index * legendSpacing}" r="5" fill="${color}"/>`;
+        svg += `<text x="${legendX + 15}" y="${legendY + 5 + index * legendSpacing}" font-size="12">${dataset.label}</text>`;
+      });
+
+      selectedDatasets.forEach(dataset => {
+        const color = dataset.borderColor;
+        let path = `M${padding},${height - padding - (dataset.data[0] / 100) * (height - 2 * padding)}`;
+        for (let i = 1; i < dataset.data.length; i++) {
+          const x = padding + (i / (dataset.data.length - 1)) * (width - 2 * padding);
+          const y = height - padding - (dataset.data[i] / 100) * (height - 2 * padding);
+          path += ` L${x},${y}`;
+        }
+        svg += `<path d="${path}" stroke="${color}" fill="none" stroke-width="1"/>`;
+      });
+
+      svg += '</svg>';
+
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const link = document.createElement('a');
+      link.download = `${fileName}.svg`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+    }
+
+    function exportToSPC(selectedDatasets, fileName) {
+      const labels = spectrumChart.data.labels;
+      let spcContent = '#SPC\n';
+      spcContent += `#DATE ${new Date().toISOString().split('T')[0]}\n`;
+      spcContent += `#TIME ${new Date().toTimeString().split(' ')[0]}\n`;
+      spcContent += `#XUNITS NM\n`;
+      spcContent += `#YUNITS INTENSITY%\n`;
+      spcContent += `#NPOINTS ${labels.length}\n`;
+      spcContent += '#FIRSTX ' + labels[0] + '\n';
+      spcContent += '#LASTX ' + labels[labels.length - 1] + '\n';
+
+      if (selectedDatasets.length === 1) {
+        const dataset = selectedDatasets[0];
+        spcContent += `#COLOR ${dataset.borderColor}\n`;
+        spcContent += `#TITLE ${dataset.label}\n`;
+        spcContent += '#DATA\n';
+
+        for (let i = 0; i < dataset.data.length; i++) {
+          spcContent += `${labels[i]} ${dataset.data[i].toFixed(2)}\n`;
+        }
+      } else {
+        alert(t('spcOneOnly'));
+        return;
+      }
+
+      const blob = new Blob([spcContent], { type: 'text/plain' });
+      const link = document.createElement('a');
+      link.download = `${fileName}.spc`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+    }
+
+    function exportToCSV(selectedDatasets, fileName) {
+      let csvContent = "Длина волны (нм),Интенсивность (%),Цвет,Название\n";
+
+      selectedDatasets.forEach(dataset => {
+        dataset.data.forEach((value, index) => {
+          const wavelength = spectrumChart.data.labels[index];
+          csvContent += `${wavelength},${value.toFixed(2)},${dataset.borderColor},"${dataset.label}"\n`;
+        });
+        csvContent += "\n";
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.download = `${fileName}.csv`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+    }
+
+    confirmExportButton.addEventListener('click', () => {
+      const selectedIndices = Array.from(spectrumOptions.querySelectorAll('input[type="checkbox"]:checked')).map(input => parseInt(input.value));
+      const format = exportFormatSelect.value;
+
+      if (selectedIndices.length === 0) {
+        alert(t('selectAtLeastOne'));
+        return;
+      }
+
+      const savedDatasets = spectrumChart.data.datasets.filter(dataset => dataset.label !== 'Текущий спектр');
+      const selectedDatasets = selectedIndices.map(index => savedDatasets[index]);
+      const fileName = selectedDatasets.map(dataset => dataset.label).join('+');
+
+      switch (format) {
+        case 'PNG':
+          exportToPNG(selectedDatasets, fileName);
+          break;
+        case 'SVG':
+          exportToSVG(selectedDatasets, fileName);
+          break;
+        case 'SPC':
+          exportToSPC(selectedDatasets, fileName);
+          break;
+        case 'CSV':
+          exportToCSV(selectedDatasets, fileName);
+          break;
+      }
+
+      exportModal.style.display = 'none';
+    });
+
+    exportModal.addEventListener('click', (e) => {
+      if (e.target === exportModal) {
+        exportModal.style.display = 'none';
+      }
+    });
+
+   sensitivityInput.addEventListener('input', () => {
+  // Убрать принудительную установку значения 50
+  const value = parseFloat(sensitivityInput.value);
+
+  // Исправить формулу преобразования
+  sensitivity = 0.5 + (value / 100) * 1.5; // 0.5-2.0 при 0-100
+
+  // Для более точного управления можно использовать:
+  // sensitivity = 0.5 + (value / 100) * 1.5; // 0.5-2.0 при 0-100
+
+  analyzeImage();
+});
+
+    showPeaksCheckbox.addEventListener('change', () => {
+      isPeaksVisible = showPeaksCheckbox.checked;
+      peakThresholdContainer.style.display = isPeaksVisible ? 'flex' : 'none';
+      analyzeImage();
+    });
+
+    peakThresholdInput.addEventListener('input', () => {
+    peakThreshold = parseInt(peakThresholdInput.value);
+      console.log('Порог пиков:', peakThreshold);
+      analyzeImage();
+    });
+
+    showValleysCheckbox.addEventListener('change', () => {
+      isValleysVisible = showValleysCheckbox.checked;
+      valleyThresholdContainer.style.display = isValleysVisible ? 'flex' : 'none';
+      analyzeImage();
+    });
+
+    valleyThresholdInput.addEventListener('input', () => {
+      valleyThreshold = parseInt(valleyThresholdInput.value);
+      console.log('Порог провалов:', valleyThreshold);
+      analyzeImage();
+    });
+
+    invertXCheckbox.addEventListener('change', () => {
+      isInvertedX = invertXCheckbox.checked;
+      analyzeImage();
+    });
+
+    chartStyleSelect.addEventListener('change', () => {
+      chartStyle = chartStyleSelect.value;
+      updateChartStyle();
+      analyzeImage();
+    });
+
+    function updateChartStyle() {
+      const liveIndex = spectrumChart.data.datasets.findIndex(ds => ds.label === 'Текущий спектр');
+      if (liveIndex !== -1) {
+        spectrumChart.options.elements.line.borderWidth = 1;
+      }
+      spectrumChart.update();
+    }
+
+    startCalibrationButton.addEventListener('click', () => {
+      if (!isCalibrationActive) {
+        isCalibrationActive = true;
+        calibrationPoints = [];
+        startCalibrationButton.textContent = 'Сбросить калибровку';
+        calibrationStatus.textContent = 'Кликните на график для выбора первой точки';
+        spectrumChart.canvas.style.cursor = 'crosshair';
+      } else {
+        isCalibrationActive = false;
+        calibrationPoints = [];
+        startCalibrationButton.textContent = 'Начать калибровку';
+        calibrationStatus.textContent = 'Выберите 2 точки на графике';
+        spectrumChart.canvas.style.cursor = 'default';
+
+        wavelengthLabels = [];
+        for (let i = 380; i <= 1145; i += 40) {
+          wavelengthLabels.push(i);
+        }
+        spectrumChart.data.labels = wavelengthLabels;
+        spectrumChart.update();
+      }
+    });
+
+    spectrumChart.canvas.addEventListener('click', (event) => {
+      if (!isCalibrationActive || calibrationPoints.length >= 2) return;
+
+      const rect = spectrumChart.canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const chartArea = spectrumChart.chartArea;
+      const xValue = Math.round(((x - chartArea.left) / (chartArea.right - chartArea.left)) * (spectrumChart.data.labels.length - 1));
+
+      if (xValue >= 0 && xValue < spectrumChart.data.labels.length) {
+        calibrationPoints.push(xValue);
+        if (calibrationPoints.length === 1) {
+          calibrationStatus.textContent = 'Кликните на график для выбора второй точки';
+        } else if (calibrationPoints.length === 2) {
+          calibrationStatus.textContent = 'Калибровка завершена';
+          isCalibrationActive = false;
+          spectrumChart.canvas.style.cursor = 'default';
+          startCalibrationButton.textContent = 'Сбросить калибровку';
+          applyCalibration();
+        }
+      }
+    });
+
+    function applyCalibration() {
+      if (calibrationPoints.length !== 2) return;
+
+      const wavelength1 = parseFloat(calibrationPoint1Input.value);
+      const wavelength2 = parseFloat(calibrationPoint2Input.value);
+      const pixel1 = calibrationPoints[0];
+      const pixel2 = calibrationPoints[1];
+
+      if (pixel1 === pixel2) {
+        alert('Точки должны быть разными!');
+        calibrationPoints = [];
+        calibrationStatus.textContent = 'Выберите 2 точки на графике';
+        return;
+      }
+
+      const slope = (wavelength2 - wavelength1) / (pixel2 - pixel1);
+      const intercept = wavelength1 - slope * pixel1;
+      wavelengthLabels = Array.from({ length: spectrumChart.data.labels.length }, (_, i) => Math.round(intercept + slope * i));
+      spectrumChart.data.labels = wavelengthLabels;
+      spectrumChart.update();
+    }
+
+    function findPeaks(data, threshold) {
+    const peaks = [];
+    const normalizedThreshold = (threshold / 100) * getMaxPossibleDiff(data);
+
+    for (let i = 1; i < data.length - 1; i++) {
+        const current = data[i];
+        const prev = data[i - 1];
+        const next = data[i + 1];
+        const diffPrev = current - prev;
+        const diffNext = current - next;
+        if (diffPrev > normalizedThreshold && diffNext > normalizedThreshold) {
+            peaks.push({
+                position: i,          // Позиция по оси X
+                value: current,       // Значение интенсивности
+                leftSlope: diffPrev,  // Крутизна левого склона
+                rightSlope: diffNext  // Крутизна правого склона
+            });
+        }
+    }
+    return peaks;
+}
+  function getMaxPossibleDiff(data) {
+    let maxDiff = 0;
+    for (let i = 1; i < data.length; i++) {
+        maxDiff = Math.max(maxDiff, Math.abs(data[i] - data[i-1]));
+    }
+    return maxDiff;
+}
+
+   function findValleys(data, threshold) {
+    const valleys = [];
+    const normalizedThreshold = (threshold / 100) * getMaxPossibleDiff(data);
+
+    for (let i = 1; i < data.length - 1; i++) {
+        const current = data[i];
+        const prev = data[i - 1];
+        const next = data[i + 1];
+        const diffPrev = prev - current;
+        const diffNext = next - current;
+
+        if (diffPrev > normalizedThreshold && diffNext > normalizedThreshold) {
+            valleys.push({
+                position: i,
+                value: current,
+                leftSlope: diffPrev,
+                rightSlope: diffNext
+            });
+        }
+    }
+    return valleys;
+}
+
+    function analyzeImage() {
+      if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      overlayCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      let xStart, xEnd, yStart, yEnd;
+      if (selectedArea) {
+        xStart = Math.max(0, Math.floor(selectedArea.x));
+        xEnd = Math.min(canvas.width, Math.floor(selectedArea.x + selectedArea.width));
+        yStart = Math.max(0, Math.floor(selectedArea.y));
+        yEnd = Math.min(canvas.height, Math.floor(selectedArea.y + selectedArea.height));
+      } else {
+        xStart = 0;
+        xEnd = canvas.width;
+        yStart = Math.floor(canvas.height * 0.4);
+        yEnd = Math.floor(canvas.height * 0.6);
+      }
+
+      const spectrumWidth = xEnd - xStart;
+      const spectrum = new Array(spectrumWidth).fill(0);
+
+      for (let x = xStart; x < xEnd; x++) {
+        let sum = 0;
+        let pixelCount = 0;
+        for (let y = yStart; y < yEnd; y++) {
+          const index = (y * canvas.width + x) * 4;
+          const r = data[index];
+          const g = data[index + 1];
+          const b = data[index + 2];
+          sum += (r + g + b) / 3;
+          pixelCount++;
+        }
+        spectrum[x - xStart] = pixelCount > 0 ? sum / pixelCount : 0;
+      }
+      currentRawSpectrum = spectrum.slice();
+      const maxIntensity = Math.max(...spectrum);
+      let normalizedSpectrum = spectrum.map(value => value);
+	let processedSpectrum;
+
+if (backgroundSpectrum) {
+  // Вычисляем разницу с фоновым спектром
+  processedSpectrum = currentRawSpectrum.map((value, index) => {
+    const diff = value - (backgroundSpectrum[index] || 0);
+    return Math.max(0, diff);
+  });
+
+  // Нормализуем относительно максимального значения
+  const maxValue = Math.max(...processedSpectrum);
+  if (maxValue > 0) {
+    processedSpectrum = processedSpectrum.map(value => (value / maxValue) * 100);
+  }
+
+  // Применяем чувствительность
+  processedSpectrum = processedSpectrum.map(value => Math.min(100, value * sensitivity));
+
+  if (!isTransmissionMode) {
+    processedSpectrum = processedSpectrum.map(value => 100 - value);
+  }
+} else {
+  // Стандартная нормализация без фона
+  const maxIntensity = Math.max(...currentRawSpectrum);
+  processedSpectrum = currentRawSpectrum.map(value => (value / maxIntensity) * 100);
+
+  // Применяем чувствительность
+  processedSpectrum = processedSpectrum.map(value => Math.min(100, value * sensitivity));
+
+  if (!isTransmissionMode) {
+    processedSpectrum = processedSpectrum.map(value => 100 - value);
+  }
+}
+
+// Сглаживание
+if (smoothingFactor > 0) {
+  processedSpectrum = smoothData(processedSpectrum, smoothingFactor * 2 + 1);
+}
+
+
+
+      if (smoothingFactor > 0) {
+        processedSpectrum = smoothData(processedSpectrum, smoothingFactor * 2 + 1);
+      }
+
+      if (isInvertedX) {
+        processedSpectrum = processedSpectrum.reverse();
+      }
+
+      const minWavelength = 380;
+      const maxWavelength = 1145;
+      const step = (maxWavelength - minWavelength) / (spectrumWidth - 1);
+      let currentLabels = Array.from({ length: spectrumWidth }, (_, i) => Math.round(minWavelength + i * step));
+
+      if (calibrationPoints.length === 2) {
+        currentLabels = wavelengthLabels;
+      }
+
+      if (liveSpectrumActive && isRealtimeRendering) {
+        spectrumChart.data.labels = currentLabels;
+        liveSpectrumDataset.data = processedSpectrum.map(value => Math.max(0, Math.min(100, value)));
+      }
+
+      console.log('Обработанные данные спектра (первые 10):', processedSpectrum.slice(0, 10));
+      console.log('Текущие метки (первые 10):', currentLabels.slice(0, 10));
+
+      if (liveSpectrumActive && isRealtimeRendering) {
+        const pointRadius = new Array(processedSpectrum.length).fill(0);
+        const pointBackgroundColor = new Array(processedSpectrum.length).fill(liveSpectrumDataset.borderColor);
+
+        if (isPeaksVisible || isValleysVisible) {
+          const peaks = isPeaksVisible ? findPeaks(processedSpectrum, peakThreshold) : [];
+const valleys = isValleysVisible ? findValleys(processedSpectrum, valleyThreshold) : [];
+
+         peaks.forEach(peak => {
+      pointRadius[peak.position] = 5;
+      pointBackgroundColor[peak.position] = 'green';
+    });
+
+         valleys.forEach(valley => {
+    if (valley.position < processedSpectrum.length) {
+        pointRadius[valley.position] = 5;
+        pointBackgroundColor[valley.position] = 'red';
+       }
+    });
+        }
+
+        liveSpectrumDataset.pointRadius = pointRadius;
+        liveSpectrumDataset.pointBackgroundColor = pointBackgroundColor;
+      }
+
+      spectrumChart.update();
+    }
+
+    let lastFrameTime = 0;
+    const frameInterval = 1000 / 30;
+
+    function mainLoop(timestamp) {
+      if (timestamp - lastFrameTime >= frameInterval) {
+        analyzeImage();
+        lastFrameTime = timestamp;
+      }
+      requestAnimationFrame(mainLoop);
+    }
+
+    updateChartTheme();
+  </script>
+</body>
+</html>
