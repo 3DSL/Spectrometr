@@ -32,8 +32,8 @@ Key Features ✨
 How to Use 🛠️
 1. Setup
 bash
-[git clone https://github.com/your-username/3dsl-spectrometer.git](https://3dsl.github.io/Spectrometr/)
-cd 3dsl-spectrometer
+
+[cd 3dsl-spectrometer](https://3dsl.github.io/Spectrometr/)
 # Open index.html in browser
 2. Basic Operation
 Allow camera access when prompted
