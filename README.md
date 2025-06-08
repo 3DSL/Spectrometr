@@ -1,100 +1,118 @@
-# Spectrometr
-3DSL Spectrometer is a web application for analyzing optical spectra using your device's camera. The program captures, processes, and visualizes spectra in real-time, detects peaks and valleys, compares multiple measurements, and exports data.
-🚀 Key Features
-Operation Modes:
+3DSL Spectrometer (from the Creative Science Workshop - 3D Science Laboratory)
+3DSL Spectrometer is a web application for analyzing optical spectra using your device's camera. Capture, process, and visualize light spectra in real-time with this browser-based tool.
 
-📊 Transmission - analyzes light transmission through samples
+![image](https://github.com/user-attachments/assets/325a8daa-e072-4a59-944c-ba919567d4e1)
 
-⚫ Absorption - analyzes light absorption
 
-🌗 Dark/Light Theme - customizable interface
+Key Features ✨
+📷 Real-time camera spectrum analysis
 
-Camera Control:
+📊 Transmission and absorption modes
 
-Automatic camera connection
+🔍 Automatic peak/valley detection
 
-Custom analysis area selection
+⚙️ Two-point wavelength calibration
 
-Sensitivity adjustment slider
 
-Spectral Analysis:
+![image](https://github.com/user-attachments/assets/0b3e8467-2b6b-4c53-b2a9-e09a1e3a7da7)
 
-Automatic peak detection (green markers)
 
-Valley detection (red markers)
+💾 Save and compare multiple spectra
 
-Detection threshold customization
+![image](https://github.com/user-attachments/assets/c4c691f3-68e0-45f5-ab8b-54d035a7f8f2)
 
-Data smoothing slider
 
-Calibration:
+🌐 Multi-language support (English/Russian)
 
-Pixel → nanometer conversion
+📁 Export to PNG, SVG, SPC, CSV formats
 
-Two-point calibration system
+![image](https://github.com/user-attachments/assets/c0d3c13e-7a4e-4a69-9d69-6bbfcbfb381e)
 
-Linear wavelength interpolation
 
-Data Management:
-
-Save multiple spectra
-
-Compare up to 16 spectra with color coding
-
-Export to PNG, SVG, SPC, CSV formats
-
-🛠️ How to Use
-Step 1: Setup
-Open the app in Chrome/Firefox
-
+How to Use 🛠️
+1. Setup
+bash
+git clone https://github.com/your-username/3dsl-spectrometer.git
+cd 3dsl-spectrometer
+# Open index.html in browser
+2. Basic Operation
 Allow camera access when prompted
 
 Point camera at light spectrum (e.g., through diffraction grating)
-Step 3: Calibration (Optional)
-Enter two known wavelengths (nm)
+
+Click camera icon (📷) to enable video feed
+
+Use "Select Area" to define analysis region
+
+3. Calibration (Optional)
+Enter two known wavelengths in calibration section
 
 Click "Start Calibration"
 
 Click corresponding points on the chart
 
-Step 4: Spectrum Analysis
-Real-time parameter adjustment:
+4. Analysis
+Adjust parameters in real-time:
 
-Sensitivity - signal amplification
+Sensitivity: Signal amplification
 
-Smoothing - noise reduction
+Smoothing: Noise reduction
 
-Peak/Valley Threshold - detection sensitivity
+Thresholds: Detection sensitivity
 
-Step 5: Save & Compare
-Click "Save Spectrum" to store current plot
+Toggle between Transmission/Absorption modes
 
-Switch between spectra using colored tabs
+Save spectra with "Save Spectrum" button
 
-Export: "Export" → select format → "Confirm"
+5. Export Data
+Click "Export" button
 
-📁 Export Formats
-Format	Purpose	Special Features
-PNG	Visualization	Bitmap image of graph
-SVG	Publications	Vector image with high quality
-SPC	SpectraLab	Professional spectroscopy format
-CSV	Data analysis	Raw values (wavelength, intensity)
-🌐 Localization
-The RU/EN toggle in the top-right corner switches interface languages. Settings are saved in browser's local storage.
+Select spectra to export
 
-⚙️ Technical Requirements
-Modern browser (Chrome 90+, Firefox 88+)
+Choose format: PNG, SVG, SPC, or CSV
 
-Device camera access
+Click "Confirm Export"
 
-Minimum screen resolution: 1024×768
+Export Formats 📁
+Format	Purpose	Best For
+PNG	Image export	Reports, presentations
+SVG	Vector graphics	Publications, printing
+SPC	Spectral data	Professional analysis
+CSV	Raw values	Spreadsheet analysis
+Requirements ⚙️
+Modern browser (Chrome, Firefox, Edge)
 
-🧪 Application Examples
-Optical filter analysis
+Camera access
 
-Liquid absorption spectroscopy
+Screen resolution: 1024×768+
 
-Light source comparison
+Internet connection (for Chart.js CDN)
+
+Application Examples 🧪
+Optical filter analysis - Measure transmission spectra
+
+Liquid spectroscopy - Analyze absorption properties
+
+Light source comparison - Compare LED vs. incandescent spectra
+
+Educational demonstrations - Teach principles of optics
+
+Tip: For best results, stabilize your device and work in low-light conditions.
+
+Development Setup 💻
+No dependencies required! Just open index.html in your browser. The app uses:
+
+Chart.js for visualization
+
+Native browser APIs for camera access
+
+Pure JavaScript/CSS/HTML
+
+License 📄
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+Support 🌐
+Switch between English/Russian using the RU/EN toggle in the top-right corner.
 
 Educational optics experiments
 
